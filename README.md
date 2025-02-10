@@ -2,7 +2,7 @@
 
 <p align="center">
    <img src="https://img.shields.io/static/v1?label=Future Layoffs&message=Law-and-Disorder&color=white&logo=github" alt="Future Layoffs - Law and Disorder">
-   <img src="https://img.shields.io/badge/version-Alpha-white" alt="Version Alpha">
+   <img src="https://img.shields.io/badge/version-0.2.11-white" alt="Version 0.2.11">
    <img src="https://img.shields.io/badge/License-Apache_2.0-white" alt="License Apache 2.0">
    </a>
 </p>
