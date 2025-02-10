@@ -1,11 +1,6 @@
-fastapi
-uvicorn
+flask
+flask-cors
 pandas
-pydantic
-transformers
-torch
 sentence-transformers
-accelerate
-python-multipart
-redis
-cachetools
+transformers
+scikit-learn
