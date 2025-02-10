@@ -73,6 +73,24 @@ legal-game
 2. Enter a situation in the input field and submit.
 3. View the verdict, relevant articles, reasoning, and potential loopholes.
 
+## How the Game Works
+```mermaid
+flowchart TD
+    A[Start Game] --> B{Choose Mode}
+    B --> |Party Mode| C[Player writes a prompt]
+    C --> D[Opposite Player guesses YES/NO/MAYBE]
+    D --> E{Verdict}
+    E --> |Correct| F[+1 Point]
+    E --> |Maybe| G[0 Points]
+    E --> |Wrong| H[-1 Point]
+    F --> I{First to X Points Wins}
+    G --> I
+    H --> I
+    B --> |AI Generative Mode| J[AI generates a scenario]
+    J --> D
+    I --> K[End Game]
+```
+
 ## Contributing
 Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
 
