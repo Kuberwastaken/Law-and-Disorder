@@ -48,7 +48,7 @@ legal-game
    ```
 3. Start the development server:
    ```
-   npm run dev
+   npm start
    ```
 
 ### Backend
@@ -59,7 +59,7 @@ legal-game
    ```
 3. Start the FastAPI server:
    ```
-   uvicorn main:app --reload
+   python app.py
    ```
 
 ## Technologies
