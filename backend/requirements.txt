@@ -4,3 +4,4 @@ pandas
 sentence-transformers
 transformers
 scikit-learn
+numpy
