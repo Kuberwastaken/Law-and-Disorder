@@ -3,112 +3,121 @@ from flask_cors import CORS
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import pipeline, AutoTokenizer, AutoModel
-import torch
+from sentence_transformers import SentenceTransformer
 import re
 
 app = Flask(__name__)
 CORS(app)
 
-# Load constitution data with proper preprocessing
+# Load and preprocess constitution data
 constitution_df = pd.read_csv('constitution_of_india.csv')
 constitution_df['text'] = constitution_df['title'] + ': ' + constitution_df['description']
 constitution_df = constitution_df.rename(columns={'article': 'article_no'})
 
-# Load legal-specific models
-legal_bert = AutoModel.from_pretrained("nlpaueb/legal-bert-base-uncased")
-tokenizer = AutoTokenizer.from_pretrained("nlpaueb/legal-bert-base-uncased")
+# Load lightweight model
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Initialize text generation pipeline with constraints
-text_generator = pipeline(
-    'text-generation',
-    model='gpt2',
-    tokenizer=tokenizer,
-    device=0 if torch.cuda.is_available() else -1,
-    pad_token_id=tokenizer.eos_token_id
-)
+# Precompute embeddings
+article_embeddings = model.encode(constitution_df['text'].tolist(), convert_to_tensor=True)
 
-# Precompute legal document embeddings
-def get_bert_embeddings(texts):
-    inputs = tokenizer(texts, return_tensors='pt', padding=True, truncation=True, max_length=512)
-    with torch.no_grad():
-        outputs = legal_bert(**inputs)
-    return outputs.last_hidden_state.mean(dim=1).numpy()
-
-article_embeddings = get_bert_embeddings(constitution_df['text'].tolist())
-
-def find_relevant_articles(query, threshold=0.3):
-    query_embedding = get_bert_embeddings([query])
-    similarities = cosine_similarity(query_embedding, article_embeddings)[0]
+def find_relevant_articles(query, threshold=0.25):
+    query_embedding = model.encode([query], convert_to_tensor=True)
+    similarities = cosine_similarity(
+        query_embedding.cpu().numpy(),
+        article_embeddings.cpu().numpy()
+    )[0]
     
-    # Filter by threshold and return sorted results
-    relevant_indices = np.where(similarities >= threshold)[0]
-    sorted_indices = relevant_indices[np.argsort(-similarities[relevant_indices])]
+    # Get indices with similarity above threshold, sorted descending
+    viable_indices = np.argsort(-similarities)
+    top_indices = [idx for idx in viable_indices if similarities[idx] >= threshold][:3]
     
-    return constitution_df.iloc[sorted_indices[:3]].to_dict('records')
+    return [
+        {**constitution_df.iloc[idx].to_dict(), 'similarity': float(similarities[idx])}
+        for idx in top_indices
+    ]
 
 def generate_analysis(situation, articles):
-    articles_text = "\n".join([f"Article {art['article_no']}: {art['text']}" for art in articles])
+    if not articles:
+        return "No clear constitutional precedent found."
     
-    prompt = f"""Legal Analysis Template:
-Situation: {situation}
-Relevant Constitutional Provisions:
-{articles_text}
-
-Analysis: Based strictly on the provided articles, this situation appears to be"""
+    analysis_template = """Legal analysis of this situation primarily relates to {main_topic}. 
+Article {primary_article} states: {key_principle}"""
     
-    response = text_generator(
-        prompt,
-        max_new_tokens=150,
-        temperature=0.7,
-        repetition_penalty=1.5,
-        num_return_sequences=1,
-        truncation=True
-    )[0]['generated_text']
+    main_article = articles[0]
+    main_topic = main_article['title'].split(':')[0].lower()
+    key_principle = main_article['description'].split('.')[0].lower()
     
-    # Extract only the analysis portion
-    analysis = response.split("Analysis:")[-1].strip()
-    analysis = re.sub(r'\b(?:however|but|although).*', '', analysis, flags=re.IGNORECASE)
+    analysis = analysis_template.format(
+        main_topic=main_topic,
+        primary_article=main_article['article_no'],
+        key_principle=key_principle.capitalize()
+    )
+    
+    if len(articles) > 1:
+        analysis += f"\nSupplementary context from Article {articles[1]['article_no']}: {articles[1]['description'].split('.')[0].lower()}"
+    
     return analysis
 
 def determine_verdict(articles):
-    prohibited_terms = ["prohibit", "illegal", "forbid", "ban"]
-    permitted_terms = ["right", "permit", "allow", "legal"]
+    if not articles:
+        return "MAYBE"
     
+    # Check medical exception first using regex
     for article in articles:
         text = article['text'].lower()
-        if any(term in text for term in prohibited_terms):
-            return "NO"
-        if any(term in text for term in permitted_terms):
+        if re.search(r'except\s+for\s+medicinal\s+purposes', text):
             return "YES"
+    
+    # Check prohibited terms with word boundaries
+    prohibited_terms = [r'\bprohibit\b', r'\billegal\b', r'\bforbid\b', r'\bban\b']
+    for article in articles:
+        text = article['text'].lower()
+        if any(re.search(term, text) for term in prohibited_terms):
+            return "NO"
+    
+    # Check permission terms
+    permitted_terms = [r'\bright\b', r'\bpermit\b', r'\ballow\b', r'\blegal\b']
+    for article in articles:
+        text = article['text'].lower()
+        if any(re.search(term, text) for term in permitted_terms):
+            return "YES"
+    
     return "MAYBE"
 
 @app.route('/analyze', methods=['POST'])
 def analyze_situation():
     try:
         data = request.json
-        situation = data['situation'][:500]  # Limit input length
+        situation = data['situation'][:500].strip()
         
-        # Find relevant articles
+        if not situation:
+            return jsonify({
+                'verdict': "MAYBE",
+                'articles': [],
+                'reasoning': "Please provide a situation to analyze."
+            })
+        
         relevant_articles = find_relevant_articles(situation)
-        if not relevant_articles:
-            return jsonify({'error': 'No relevant laws found'}), 404
-            
-        # Get verdict
         verdict = determine_verdict(relevant_articles)
-        
-        # Generate analysis
         analysis = generate_analysis(situation, relevant_articles)
+        
+        # Remove technical fields from response
+        clean_articles = [{k: v for k, v in a.items() if k != 'similarity'} 
+                         for a in relevant_articles]
         
         return jsonify({
             'verdict': verdict,
-            'articles': relevant_articles,
+            'articles': clean_articles,
             'reasoning': analysis
         })
         
     except Exception as e:
         app.logger.error(f"Error: {str(e)}")
-        return jsonify({'error': 'Analysis failed'}), 500
+        return jsonify({
+            'verdict': "MAYBE",
+            'articles': [],
+            'reasoning': f"Analysis error: {str(e)}"
+        }), 200
 
 if __name__ == '__main__':
     app.run(debug=True)

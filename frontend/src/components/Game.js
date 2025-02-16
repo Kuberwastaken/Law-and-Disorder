@@ -13,6 +13,11 @@ function Game() {
   const [newPlayerName, setNewPlayerName] = useState('');
   const [winningScore, setWinningScore] = useState(50);
 
+  const resetState = () => {
+    setSituation('');
+    setResult(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -24,7 +29,7 @@ function Game() {
       setPlayers(updatedPlayers);
       
       setCurrentPlayerIndex((prev) => (prev + 1) % players.length);
-      setSituation('');
+      setSituation(''); // Only reset situation after successful submission
     } catch (error) {
       console.error('Error:', error);
     }
@@ -35,6 +40,7 @@ function Game() {
     try {
       const response = await axios.post('http://localhost:5000/analyze', { situation });
       setResult(response.data);
+      setSituation(''); // Only reset situation after successful submission
     } catch (error) {
       console.error('Error:', error);
     }
@@ -162,23 +168,6 @@ function Game() {
             )}
           </div>
         ))}
-        {players.length < 4 && (
-          <div className="add-player-section">
-            <input
-              type="text"
-              value={newPlayerName}
-              onChange={(e) => setNewPlayerName(e.target.value)}
-              placeholder="New Player Name"
-              className="add-player-input"
-            />
-            <button 
-              onClick={addPlayer} 
-              className="add-player-btn"
-            >
-              Add Player
-            </button>
-          </div>
-        )}
       </div>
       
       <form onSubmit={handleSubmit} className="situation-form">
@@ -216,7 +205,7 @@ function Game() {
             </div>
           </div>
           <button onClick={() => {
-            setResult(null);
+            resetState();
             setMode('setup');
           }} className="submit-btn">
             Back to Setup
@@ -261,17 +250,21 @@ function Game() {
               <p>{result.reasoning}</p>
             </div>
           </div>
-          <button onClick={() => {
-            setResult(null);
-            setMode('setup');
-          }} className="submit-btn">
-            Check Another Scenario
+          <button 
+            onClick={() => resetState()} 
+            className="submit-btn"
+            style={{marginTop: '1rem'}}
+          >
+            Analyze Another Scenario
           </button>
         </div>
       )}
 
       <button 
-        onClick={() => setMode('setup')} 
+        onClick={() => {
+          resetState();
+          setMode('setup');
+        }} 
         className="submit-btn"
         style={{marginTop: '1rem'}}
       >
