@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import './Game.css';
 
 function Game() {
   const [mode, setMode] = useState('setup');
