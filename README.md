@@ -65,7 +65,7 @@ legal-game
 ## Technologies
 - **Frontend**: React JS
 - **Backend**: FastAPI, Python
-- **AI/ML**: Modified Version of Bert and Bart
+- **AI/ML**: Modified Version of MiniLM-L6 and Google Flan-T5
 - **Database**: CSV for storing the Indian Constitution data
 
 ## Usage
