@@ -103,8 +103,9 @@ body {
 
 .primary-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 8px 30px rgba(109, 76, 65, 0.3);
 }
+
 
 .secondary-btn {
   background: rgba(255, 255, 255, 0.1);
@@ -120,7 +121,6 @@ body {
 /* Features Section */
 .features-section {
   padding: 6rem 2rem;
-  background: linear-gradient(to bottom, transparent, rgba(139, 92, 246, 0.1));
 }
 
 .features-grid {

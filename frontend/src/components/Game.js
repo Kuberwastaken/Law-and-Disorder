@@ -13,26 +13,53 @@ function Game() {
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [winningScore, setWinningScore] = useState(50);
+  const [editingName, setEditingName] = useState('');
+  const [waitingForGuess, setWaitingForGuess] = useState(false);
+  const [submittedSituation, setSubmittedSituation] = useState('');
 
   const resetState = () => {
     setSituation('');
     setResult(null);
+    setWaitingForGuess(false);
+    setSubmittedSituation('');
+  };
+
+  const getOppositePlayerIndex = () => {
+    const totalPlayers = players.length;
+    return (currentPlayerIndex + Math.floor(totalPlayers/2)) % totalPlayers;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmittedSituation(situation);
+    setWaitingForGuess(true);
+  };
+
+  const handleGuess = async (guess) => {
     try {
-      const response = await axios.post('http://localhost:5000/analyze', { situation });
+      const response = await axios.post('http://localhost:5000/analyze', { situation: submittedSituation });
       setResult(response.data);
       
       const updatedPlayers = [...players];
-      updatedPlayers[currentPlayerIndex].score += response.data.verdict === 'YES' ? 10 : 5;
-      setPlayers(updatedPlayers);
+      const oppositePlayerIndex = getOppositePlayerIndex();
       
-      setCurrentPlayerIndex((prev) => (prev + 1) % players.length);
-      setSituation(''); // Only reset situation after successful submission
+      // Calculate if guess was correct
+      const isLegal = response.data.verdict === 'YES';
+      const guessedCorrectly = (guess === 'legal' && isLegal) || (guess === 'illegal' && !isLegal);
+      
+      // Update scores
+      if (guessedCorrectly) {
+        updatedPlayers[oppositePlayerIndex].score += 5; // Correct guess
+      } else {
+        updatedPlayers[oppositePlayerIndex].score = Math.max(0, updatedPlayers[oppositePlayerIndex].score - 1); // Wrong guess, minimum 0
+      }
+      
+      setPlayers(updatedPlayers);
+      setWaitingForGuess(false);
+      setSituation('');
     } catch (error) {
       console.error('Error:', error);
+      setWaitingForGuess(false);
     }
   };
 
@@ -41,7 +68,7 @@ function Game() {
     try {
       const response = await axios.post('http://localhost:5000/analyze', { situation });
       setResult(response.data);
-      setSituation(''); // Only reset situation after successful submission
+      setSituation('');
     } catch (error) {
       console.error('Error:', error);
     }
@@ -66,6 +93,7 @@ function Game() {
     const updatedPlayers = [...players];
     updatedPlayers[index].isEditing = !updatedPlayers[index].isEditing;
     setPlayers(updatedPlayers);
+    setEditingName(players[index].name);
   };
 
   const handlePlayerNameChange = (index, newName) => {
@@ -73,6 +101,17 @@ function Game() {
     updatedPlayers[index].name = newName;
     updatedPlayers[index].isEditing = false;
     setPlayers(updatedPlayers);
+  };
+
+  const handleNameKeyPress = (e, index) => {
+    if (e.key === 'Enter') {
+      handlePlayerNameChange(index, editingName);
+    }
+  };
+
+  const nextTurn = () => {
+    setCurrentPlayerIndex((prev) => (prev + 1) % players.length);
+    resetState();
   };
 
   const renderSetupScreen = () => (
@@ -97,9 +136,10 @@ function Game() {
                 {player.isEditing ? (
                   <input
                     type="text"
-                    value={player.name}
-                    onChange={(e) => handlePlayerNameChange(index, e.target.value)}
-                    onBlur={() => toggleEditPlayer(index)}
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onBlur={() => handlePlayerNameChange(index, editingName)}
+                    onKeyPress={(e) => handleNameKeyPress(e, index)}
                     autoFocus
                   />
                 ) : (
@@ -152,14 +192,15 @@ function Game() {
         {players.map((player, index) => (
           <div 
             key={player.id} 
-            className={`player-score ${index === currentPlayerIndex ? 'current-player' : ''}`}
+            className={`player-score ${index === currentPlayerIndex ? 'current-player' : ''} ${index === getOppositePlayerIndex() ? 'opposite-player' : ''}`}
           >
             {player.isEditing ? (
               <input
                 type="text"
-                value={player.name}
-                onChange={(e) => handlePlayerNameChange(index, e.target.value)}
-                onBlur={() => toggleEditPlayer(index)}
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                onBlur={() => handlePlayerNameChange(index, editingName)}
+                onKeyPress={(e) => handleNameKeyPress(e, index)}
                 autoFocus
               />
             ) : (
@@ -171,20 +212,47 @@ function Game() {
         ))}
       </div>
       
-      <form onSubmit={handleSubmit} className="situation-form">
-        <h2 className="current-player-turn">
-          {players[currentPlayerIndex].name}'s Turn
-        </h2>
-        <textarea
-          value={situation}
-          onChange={(e) => setSituation(e.target.value)}
-          placeholder="Enter an absurd legal situation that challenges the boundaries of the Indian Constitution..."
-          required
-        />
-        <button type="submit" className="submit-btn">
-          Challenge the Law
-        </button>
-      </form>
+      {!waitingForGuess ? (
+        <form onSubmit={handleSubmit} className="situation-form">
+          <h2 className="current-player-turn">
+            {players[currentPlayerIndex].name}'s Turn
+          </h2>
+          <textarea
+            value={situation}
+            onChange={(e) => setSituation(e.target.value)}
+            placeholder="Enter an absurd legal situation that challenges the boundaries of the Indian Constitution..."
+            required
+          />
+          <div className="button-group">
+            <button type="submit" className="submit-btn">
+              Submit Situation
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="guess-section">
+          <h2 className="current-player-turn">
+            {players[getOppositePlayerIndex()].name}'s Turn to Guess
+          </h2>
+          <div className="situation-display">
+            <p>{submittedSituation}</p>
+          </div>
+          <div className="button-group">
+            <button 
+              onClick={() => handleGuess('legal')} 
+              className="submit-btn legal-btn"
+            >
+              Legal
+            </button>
+            <button 
+              onClick={() => handleGuess('illegal')} 
+              className="submit-btn illegal-btn"
+            >
+              Not Legal
+            </button>
+          </div>
+        </div>
+      )}
 
       {result && (
         <div className="result-card">
@@ -205,12 +273,20 @@ function Game() {
               <p>{result.reasoning}</p>
             </div>
           </div>
-          <button onClick={() => {
-            resetState();
-            setMode('setup');
-          }} className="submit-btn">
-            Back to Setup
-          </button>
+          <div className="button-group">
+            <button onClick={nextTurn} className="submit-btn">
+              Next Turn
+            </button>
+            <button 
+              onClick={() => {
+                resetState();
+                setMode('setup');
+              }} 
+              className="submit-btn"
+            >
+              Back to Setup
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -251,26 +327,25 @@ function Game() {
               <p>{result.reasoning}</p>
             </div>
           </div>
-          <button 
-            onClick={() => resetState()} 
-            className="submit-btn"
-            style={{marginTop: '1rem'}}
-          >
-            Analyze Another Scenario
-          </button>
+          <div className="button-group">
+            <button 
+              onClick={() => resetState()} 
+              className="submit-btn"
+            >
+              Analyze Another Scenario
+            </button>
+            <button 
+              onClick={() => {
+                resetState();
+                setMode('setup');
+              }} 
+              className="submit-btn"
+            >
+              Back to Setup
+            </button>
+          </div>
         </div>
       )}
-
-      <button 
-        onClick={() => {
-          resetState();
-          setMode('setup');
-        }} 
-        className="submit-btn"
-        style={{marginTop: '1rem'}}
-      >
-        Back to Setup
-      </button>
     </div>
   );
 

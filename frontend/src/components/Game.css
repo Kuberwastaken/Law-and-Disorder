@@ -301,6 +301,46 @@
     transform: translateY(1px);
 }
 
+/* BETA */
+.button-group {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.button-group .submit-btn {
+    min-width: 180px;
+}
+
+.guess-section {
+    text-align: center;
+    margin: 2rem auto;
+    max-width: 800px;
+}
+
+.situation-display {
+    background: linear-gradient(145deg, #ffffff, #f5f5f5);
+    padding: 2rem;
+    border-radius: 12px;
+    margin: 1rem 0;
+    border: 1px solid rgba(188, 170, 164, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.legal-btn {
+    background: linear-gradient(145deg, #2e7d32, #1b5e20) !important;
+}
+
+.illegal-btn {
+    background: linear-gradient(145deg, #c62828, #b71c1c) !important;
+}
+
+.opposite-player {
+    border: 2px solid #6d4c41;
+    animation: pulse 2s infinite;
+}
+
 @media (max-width: 768px) {
     .game-container {
         padding: 1.5rem;
