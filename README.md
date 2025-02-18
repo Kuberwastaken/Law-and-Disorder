@@ -90,7 +90,7 @@ flowchart TD
     F --> I{First to X Points Wins}
     G --> I
     H --> I
-    B --> |AI Generative Mode| J[AI generates a scenario]
+    B --> |AI Generative Mode| J[Give AI an Individual Scenario]
     J --> D
     I --> K[End Game]
 ```
