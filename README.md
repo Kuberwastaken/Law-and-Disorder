@@ -1,6 +1,10 @@
 <h1 align="center">Law & Disorder</h1>
 
 <p align="center">
+  <img src="https://github.com/user-attachments/assets/c13b7fd2-e3ad-44fa-9a3b-c8053a03f34a" alt="image">
+</p>
+
+<p align="center">
    <img src="https://img.shields.io/static/v1?label=Future Layoffs&message=Law-and-Disorder&color=white&logo=github" alt="Future Layoffs - Law and Disorder">
    <img src="https://img.shields.io/badge/version-0.2.11-white" alt="Version 0.2.11">
    <img src="https://img.shields.io/badge/License-Apache_2.0-white" alt="License Apache 2.0">
@@ -80,7 +84,7 @@ flowchart TD
     B --> |Party Mode| C[Player writes a prompt]
     C --> D[Opposite Player guesses YES/NO/MAYBE]
     D --> E{Verdict}
-    E --> |Correct| F[+1 Point]
+    E --> |Correct| F[+5 Point]
     E --> |Maybe| G[0 Points]
     E --> |Wrong| H[-1 Point]
     F --> I{First to X Points Wins}
